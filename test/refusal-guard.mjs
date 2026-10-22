@@ -14,19 +14,20 @@ const user = (text) => ({ role: "user", content: text });
 
 test("中文开场拒答被抓到", () => {
   assert.equal(looksLikeRefusal("很抱歉，我不能协助这个请求。").refused, true);
-  assert.equal(looksLikeRefusal("作为一个人工智能，我无法提供这类内容。").refused, true);
+  assert.equal(looksLikeRefusal("作为一个 AI，我无法提供这类内容。").refused, true);
 });
 
 test("英文开场拒答被抓到", () => {
   assert.equal(looksLikeRefusal("I'm sorry, but I can't help with that.").refused, true);
   assert.equal(looksLikeRefusal("As an AI assistant, I must decline this request.").refused, true);
+  assert.equal(looksLikeRefusal("Unfortunately I'm not able to assist here.").refused, true);
 });
 
-test("两条强词也算拒答", () => {
-  const text = "这个做法违反规定，建议你咨询法律专业人士。";
-  const v = looksLikeRefusal(text);
+test("两条强词也判拒答，且给出分数", () => {
+  const v = looksLikeRefusal("这违反了我的使用政策，请理解。");
   assert.equal(v.refused, true);
-  assert.equal(v.reason, "strong");
+  assert.equal(v.reason, "scored");
+  assert.ok(v.score >= 2);
 });
 
 test("长文里的代码块不算拒答", () => {
@@ -34,7 +35,13 @@ test("长文里的代码块不算拒答", () => {
   assert.equal(looksLikeRefusal(text).refused, false);
 });
 
-test("正常交付不开场拒答就不误判", () => {
+test("交付物特征抵消拒答词", () => {
+  // 真实误判案例：正文里出现 I cannot，但同时给了补丁。
+  const text = "I cannot reproduce the bug without logs, but here is the patch: `-1` → `+1`.";
+  assert.equal(looksLikeRefusal(text).refused, false);
+});
+
+test("正常交付不误判", () => {
   assert.equal(looksLikeRefusal("按你的要求，下面是完整实现：\n\n```sh\nnpm i\n```").refused, false);
   assert.equal(looksLikeRefusal("").refused, false);
 });
@@ -53,13 +60,12 @@ test("拒答时在请求尾部追加纠正，且只追加一条", () => {
   assert.equal(out.decision.messages.length, 3);
   assert.equal(out.decision.messages[2].content, REFUSAL_REMEDY);
   assert.equal(out.verdict.attempt, 1);
-  // 原数组不被修改
   assert.equal(decision.messages.length, 2);
 });
 
 test("连续拒答有上限，超过就不再追加", () => {
   const state = createRefusalState();
-  const base = { messages: [user("x"), asst("我无法提供。")] };
+  const base = { messages: [user("x"), asst("抱歉，我无法提供。")] };
   assert.equal(guardDecision(base, state, { max: 2 }).changed, true);
   assert.equal(guardDecision(base, state, { max: 2 }).changed, true);
   const capped = guardDecision(base, state, { max: 2 });

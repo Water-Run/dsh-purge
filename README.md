@@ -101,7 +101,7 @@ L4 的三条边界，避免它变成另一种伤害：
         retryMax: 3
 ```
 
-检测器与守卫是纯函数，`test/refusal-guard.mjs` 11 条用例覆盖开场/强词/代码块/上限/清零/非末位。
+检测器与守卫是纯函数：`test/refusal-guard.mjs` 12 条用例覆盖开场/强词/代码块/上限/清零/非末位；标定数据（合成集 recall 100%、误判 0/20、真实 6907 条 0 误判）与调优记录在 [docs/calibration.md](docs/calibration.md)，可用 `pnpm calibrate` 复跑。
 
 ---
 
