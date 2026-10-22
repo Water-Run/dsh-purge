@@ -583,6 +583,8 @@ CI 只做校验（[.github/workflows/ci.yml](.github/workflows/ci.yml)）：语�
 | **不发版** | 删除 `.github/workflows/release.yml`；新增 `ci.yml` 只做校验，权限 `contents: read`，不产出任何包 |
 | **打包干净** | 删掉残留的 `lib/default-prompt-inject.md.bak`；`files` 白名单排除 `**/*.bak`，由 `scripts/check-pack.mjs` 守住 |
 | **文档** | README 重写；路线图独立成 [docs/ROADMAP.md](docs/ROADMAP.md) |
+| **并入 plus（1.2.0）** | 破甲内核 v3 五段（894 → 2447 字符）、`#40` 的 0.2.1 两段锚点、`#1/#2` 升级 pattern 与标记收紧、`#32/#53` 的 `harness-dev-context` 搬迁、`#85/#86`、`#87/#88`、`armor` 运行时包层、五个模块（`json-safe` / `revision` / `tool-gate` / `host-lease` / `cwd-variable`）、`test/` 三套断言，见 [NOTICE.md](NOTICE.md) |
+| **cwd 不住会话** | `personaSuffix` 置空、identity 只发纯文本；0.2.1 只注册 provider/model，`{{cwd}}` 会直接抛错 |
 
 上游的征集、广告位、发版公告属于上游作者的业务安排，本仓库不复制这些内容；**许可与署名要求照旧继承**，见下一节。
 
@@ -593,16 +595,16 @@ CI 只做校验（[.github/workflows/ci.yml](.github/workflows/ci.yml)）：语�
 完整的优先级、验收标准与风险评估在 **[docs/ROADMAP.md](docs/ROADMAP.md)**。摘要：
 
 1. **补丁锚点自愈 + `purge_doctor`**：86 个补丁全靠字面匹配，宿主一升级就集体 pending。给出「哪一条挂了、为什么、候选锚点是什么」。
-2. **测试与 CI**：现在只有 `node --check`。给纯函数补 `node:test`，CI 跑语法 + import + pack 白名单快照。
+2. **~~测试与 CI~~ 1.2.0 已落一部分**：`node --test` 14 例 + `test/gate.mjs` 71 项 + `test/cwd-variable.mjs` 21 项，CI 已跑测试；还缺 apply/revert 的 fixture 集成测试。
 3. **~~fork 自己的发版链~~ 已定：只跟上游、不发布。** `release.yml` 已删除，`ci.yml` 只做校验（语法 / import / 打包白名单 / 文档链接），权限 `contents: read`。
 4. **门禁粒度**：`unlock.json` 从总闸拆成 per-gate（区域 / 演练台 / 跨域 / 声明窗 / 名单），并记审计日志。
-5. **版本语义**：`package.json` 停在 1.1.71，代码已超出。定 `+fork.N` 或独立 minor，别让「同版本不同内容」。
+5. **~~版本语义~~ 1.2.0 已定**：并入 plus 之后统一走 `1.2.x`，上游那套 `1.1.7x` 不再跟随。
 
 ---
 
 ## 许可与署名
 
-**本仓库不是开源项目。** 正本是 [LICENSE](LICENSE)，本 fork 原样继承，未做任何放宽。
+**本仓库不是开源项目，且权利状态是分层的。** 主体正本在 [LICENSE](LICENSE)；三方来源与 MIT 部分写在 **[NOTICE.md](NOTICE.md)**。
 
 | 你要做的事 | 怎么走 |
 | --- | --- |
@@ -612,9 +614,14 @@ CI 只做校验（[.github/workflows/ci.yml](.github/workflows/ci.yml)）：语�
 | 把源码或核心实现再公开到别的仓库、网盘、频道 | 禁止 |
 | 换证前以 MIT 发出的旧 tag / tarball | 仍按当时那份 MIT，已发出的收不回 |
 
-**署名要求（强制）**：使用本项目的名称、思路、代码或提示词，必须写明作者与来源仓库 [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge)；本 fork 另标 `Water-Run/dsh-purge`。不署名、藏来源、改头换面当自己的，上游作者与本 fork 都会追究。
+**署名要求（强制）**：使用本项目的名称、思路、代码或提示词，必须写明 [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge)、[JeffKeeping/dsh-purge-plus](https://github.com/JeffKeeping/dsh-purge-plus) 与 `Water-Run/dsh-purge`。不署名、藏来源、改头换面当自己的，三方都会追究。
 
-**第三方归属**：演练台部分源自 [`dsh-redteam-mode`](https://github.com/Jueze-2019/dsh-redteam-mode)，MIT，Copyright (c) 2026 Jueze-2019。MIT 文本与双用途声明随包保留在 [docs/redteam-upstream-LICENSE](docs/redteam-upstream-LICENSE) 与 [docs/redteam-upstream-DISCLOSURE](docs/redteam-upstream-DISCLOSURE)，**不得删除**。本仓库其余部分不适用 MIT。
+**第三方归属**：
+
+- 演练台源自 [`dsh-redteam-mode`](https://github.com/Jueze-2019/dsh-redteam-mode)，MIT，Copyright (c) 2026 Jueze-2019 —— [docs/redteam-upstream-LICENSE](docs/redteam-upstream-LICENSE)、[docs/redteam-upstream-DISCLOSURE](docs/redteam-upstream-DISCLOSURE)。
+- 1.2.0 起并入 [`dsh-purge-plus`](https://github.com/JeffKeeping/dsh-purge-plus) 的补丁锚点、内核文本与模块，MIT，Copyright (c) JeffKeeping —— [docs/plus-upstream-LICENSE](docs/plus-upstream-LICENSE)。
+
+以上 MIT 文本与声明**不得删除**；除此之外的部分不适用 MIT。
 
 **闭源与发版安排以上游公告为准**：上游自 2026-10-27 起不再在 GitHub 发新版，新包只走其 Telegram 频道。本仓库是个人派生副本，不承诺对外发布，也不对外授权。
 

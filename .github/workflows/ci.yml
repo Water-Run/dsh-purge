@@ -34,6 +34,9 @@ jobs:
       - name: Import entry
         run: node --input-type=module -e "import('./lib/index.js').then(() => console.log('entry ok'))"
 
+      - name: Tests
+        run: node --test && node test/gate.mjs && node test/cwd-variable.mjs
+
       - name: Package whitelist
         run: node scripts/check-pack.mjs
 
