@@ -15,7 +15,7 @@ import path from "node:path";
 import os from "node:os";
 import zlib from "node:zlib";
 
-import { looksLikeRefusal, messageText } from "../lib/refusal-guard.js";
+import { looksLikeRefusal, looksLikeToolDenial, messageText } from "../lib/refusal-guard.js";
 
 const REFUSALS = [
   "很抱歉，我不能协助完成这个请求。",
@@ -186,3 +186,44 @@ if (process.argv.includes("--real")) {
 }
 
 if (recall < 0.95 || synth.fp > 0) process.exitCode = 1;
+
+/* ---------------------------- 工具拒绝（P1-8） ---------------------------- */
+
+const TOOL_DENIED = [
+  "Permission denied: /etc/hosts",
+  "EACCES: permission denied, open 'C:\\Windows\\x'",
+  "EPERM: operation not permitted, rename 'a'",
+  "blocked by sandbox policy",
+  "access denied by approval gate",
+  "approval required before executing this command",
+  "read-only file system",
+  "unauthorized: token lacks repo scope",
+  "path outside the workspace sandbox",
+  "权限不足，无法写入该目录",
+  "需要审批后才能执行",
+  "沙箱拒绝了这个操作",
+  "该路径不在允许的工作区内",
+  "操作被拒绝：只读文件系统",
+];
+
+const TOOL_BENIGN = [
+  "ENOENT: no such file or directory, open 'x'",
+  "connect ECONNREFUSED 127.0.0.1:8080",
+  "ETIMEDOUT",
+  "404 Not Found",
+  "wrote 12 bytes to out.txt",
+  "exit code 1: npm ERR! missing script",
+  "找不到文件：config.yaml",
+  "连接超时，已重试 3 次",
+];
+
+let tHit = 0, tMiss = [];
+for (const t of TOOL_DENIED) (looksLikeToolDenial(t).denied ? tHit++ : tMiss.push(t));
+let tFP = 0, tAlarm = [];
+for (const t of TOOL_BENIGN) (looksLikeToolDenial(t).denied ? (tFP++, tAlarm.push(t)) : 0);
+console.log("\n== 工具拒绝集 ==");
+console.log(`  拒绝 ${TOOL_DENIED.length} 条：命中 ${tHit}（${((tHit / TOOL_DENIED.length) * 100).toFixed(1)}%）`);
+console.log(`  正常 ${TOOL_BENIGN.length} 条：误判 ${tFP}`);
+if (tMiss.length) console.log("  漏判：\n" + tMiss.map((m) => "    - " + m).join("\n"));
+if (tAlarm.length) console.log("  误判：\n" + tAlarm.map((m) => "    - " + m).join("\n"));
+if (tHit < TOOL_DENIED.length || tFP > 0) process.exitCode = 1;

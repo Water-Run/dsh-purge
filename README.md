@@ -84,7 +84,7 @@ Harness 不是把问题直接交给模型。它会在运行时按层改东西。
 | **L1 内核** | 内核 v3 五段（写入宿主 `agent-instructions`） | 收判定权、钉执行身份、钉授权事实、双语禁语表、执行形态 | `--revert` 或换回旧内核 |
 | **L2 包层** | `lib/armor.js`（注入合成时包） | 前置：优先级阶梯 / 权限已定 / 工具拒绝≠任务拒绝；后置：交付前六问 | `resolveInjectText` 不包即可，或改 `armor.js` |
 | **L3 提示词** | `$DSH_HOME/prompt-inject.md` | 你的人格与硬规则（如「小码酱」），三条来源之一 | 清空该文件即退回内置默认 |
-| **L4 守卫** | `lib/refusal-guard.js`（`agent/pre-step`） | 上一条回复判成拒答时，在**请求消息尾部**补一条纠正再跑，最多 2 次 | `refusalGuard: false` |
+| **L4 守卫** | `lib/refusal-guard.js`（`agent/pre-step`） | ① 上一条回复判成拒答 → 补纠正再跑（最多 2 次）；② 最后一条**工具结果**被判成拒绝 → 补「换参数/换路径继续」（最多 2 次） | `refusalGuard: false` / `toolDenialGuard: false` |
 
 L4 的三条边界，避免它变成另一种伤害：
 
@@ -96,12 +96,14 @@ L4 的三条边界，避免它变成另一种伤害：
 
 ```yaml
         refusalGuard: true     # 关掉整个 L4
-        refusalMax: 2          # 连续纠正上限
+        refusalMax: 2          # 文本拒答纠正上限
+        toolDenialGuard: true  # 工具拒绝这半边
+        toolDenialMax: 2       # 工具拒绝纠正上限
         autoRetry: true        # 请求错误重试（另一条线）
         retryMax: 3
 ```
 
-检测器与守卫是纯函数：`test/refusal-guard.mjs` 12 条用例覆盖开场/强词/代码块/上限/清零/非末位；标定数据（合成集 recall 100%、误判 0/20、真实 6907 条 0 误判）与调优记录在 [docs/calibration.md](docs/calibration.md)，可用 `pnpm calibrate` 复跑。
+检测器与守卫是纯函数：`test/refusal-guard.mjs` **17 条**用例覆盖开场/强词/代码块/上限/清零/非末位，以及工具拒绝的识别、误判护栏、上限与清零；标定数据（文本拒答 40/40、误判 0/20、真实 6907 条 0 误判；工具拒绝 14/14、误判 0/8）与调优记录在 [docs/calibration.md](docs/calibration.md)，可用 `pnpm calibrate` 复跑。
 
 ---
 
