@@ -86,3 +86,16 @@ test("#40 二次应用不再变形", () => {
   const twice = applyReplacementsToText(once.text, patch(40));
   assert.equal(twice.changed, false);
 });
+
+// #93：悬挂注入的头尾判定会被渲染器改写，改成中段指纹。
+const HANG_LINE =
+  "\t\tif (dshPurgeHung && !(dshPurgeTail && dshPurgeNorm.includes(dshPurgeTail) && dshPurgeHead && dshPurgeNorm.includes(dshPurgeHead))) { // [dsh-purge-88]";
+
+test("#93 把悬挂判定换成中段指纹", () => {
+  const once = applyReplacementsToText(HANG_LINE, patch(93));
+  assert.equal(once.changed, true);
+  assert.ok(once.text.includes("dshPurgeMid"));
+  assert.ok(once.text.includes("[dsh-purge-93]"));
+  const twice = applyReplacementsToText(once.text, patch(93));
+  assert.equal(twice.changed, false);
+});
