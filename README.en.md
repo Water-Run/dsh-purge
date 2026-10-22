@@ -20,6 +20,8 @@
 > **What this is.** A plugin for the official [DeepSeek Harness](https://www.deepseek.com/harness/) you already have installed. It enumerates every layer the host wraps around your conversation at runtime — system prompt, approval gates, sandbox policy, tool receipts, session rewrites — and lets you change, skip or revert each one **on your own install**. 86 patches, all reversible.
 >
 > **What this repo is.** `Water-Run/dsh-purge`, a personal derivative of [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge), single branch `master`. **The upstream license and attribution rules are inherited unchanged** — see [License & attribution](#license--attribution).
+>
+> **This repo ships nothing.** No releases, no zip, no tgz, no npm package, no install support channel. If you want it, point your agent at this repo and let it follow the [install contract](#agent-install-contract). See [No builds here](#no-builds-here).
 
 ---
 
@@ -27,12 +29,14 @@
 
 - [What it touches](#what-it-touches)
 - [Compatibility](#compatibility)
+- [No builds here](#no-builds-here)
 - [Install](#install)
 - [Agent install contract](#agent-install-contract)
 - [Usage](#usage)
 - [Unlock switch](#unlock-switch)
 - [How it works](#how-it-works)
 - [Troubleshooting](#troubleshooting)
+- [Tracking upstream](#tracking-upstream)
 - [Fork delta](#fork-delta)
 - [Roadmap](#roadmap)
 - [License & attribution](#license--attribution)
@@ -71,7 +75,32 @@ Web and desktop are **two separate profiles** (`web`, `desktop`). Install and ap
 
 ---
 
+## No builds here
+
+This repo **tracks upstream and publishes nothing**:
+
+- ❌ no GitHub Releases, zip or tgz — `.github/workflows/release.yml` is gone; pushing code produces no artifacts
+- ❌ no npm package — `pnpm add dsh-purge` always 404s
+- ❌ no prebuilt tarball, mirror link or channel drop
+- ❌ no install support, customization or business inquiries
+
+The only source is the `master` branch itself. So let an agent do it:
+
+```text
+I want to use this repo on this machine. Read the AGENT-INSTALL contract in README.md
+and install dsh-purge into the local DeepSeek Harness profiles web and desktop.
+Install only — do not apply patches, do not restart. Then report in the contract's format.
+```
+
+That works for MiniMax Code, Claude Code, Codex and Cursor alike; only the paste target differs — see [Agent install contract](#agent-install-contract). The one **Apply** click stays with you; that is the step you cannot delegate.
+
+Prefer doing it by hand? The commands are in [Install](#install). Looking for someone else's prebuilt package? Ask upstream, not here.
+
+---
+
 ## Install
+
+There is no release to download. These two `dsh plugin add` commands are the only entry point: the `master` archive, or a local clone of this repo.
 
 ```sh
 # Web (official dsh web)
@@ -140,6 +169,9 @@ Paste this block (including the comment markers) to any agent with shell access.
 
 Task: install the dsh-purge plugin into the local DeepSeek Harness profile(s).
 Install only. Do not apply, do not restart.
+
+Premise: this repo publishes nothing. No release, no npm, no mirror.
+         <SRC> below is the only source. Not finding it elsewhere is expected — stop searching.
 
 Parameters:
   REPO_DIR    = this repo's root; if cwd is the repo, <SRC> is "."
@@ -260,6 +292,18 @@ Matching is **literal anchor** matching, never fuzzy: a mismatch is reported as 
 
 ---
 
+## Tracking upstream
+
+This repository exists to **follow upstream and be used on my own machine**. It is not a distribution channel. Three consequences:
+
+1. **No version to wait for.** Content is whatever `master` points at; `1.1.71` in `package.json` is upstream's package version, not something published here.
+2. **Updating = pulling `master` again.** Installed as a plugin: re-run the same `dsh plugin --profile <name> add <master archive>`, then quit, reopen and Apply again. Cloned it: `git pull`, same restart and Apply. If a host upgrade turns patches `pending`, either wait for this fork to follow upstream or `--revert` to the stock host.
+3. **No schedule promised.** If upstream stops, closes or relicenses, this repo simply follows. No announcements, no group, no preorders.
+
+CI only verifies ([.github/workflows/ci.yml](.github/workflows/ci.yml)): syntax, entry `import`, package whitelist, doc links. Permissions are pinned to `contents: read` — **it creates no release, tags nothing and uploads nothing**, so it could not publish even if asked to.
+
+---
+
 ## Fork delta
 
 | Item | Content |
@@ -269,6 +313,8 @@ Matching is **literal anchor** matching, never fuzzy: a mismatch is reported as 
 | **0.2.1 compat** | #57 handles the `instructionRole` rename, `cwd` becomes `{{cwd}}`, five compat patches land in the profile copies ([docs/compat-0.2.1.md](docs/compat-0.2.1.md)) |
 | **Panel CORS** | in unlock mode `/dsh-purge/*` works across IPs, proxies and ports |
 | **Single branch** | `master` only; `feat/unlock-gates` merged and deleted |
+| **No publishing** | `.github/workflows/release.yml` removed; `ci.yml` verifies only, `contents: read`, produces no artifacts |
+| **Clean package** | dropped the stale `lib/default-prompt-inject.md.bak`; `files` excludes `**/*.bak`; `scripts/check-pack.mjs` enforces it |
 | **Docs** | rewritten README; roadmap split into [docs/ROADMAP.md](docs/ROADMAP.md) |
 
 Upstream's fundraising, ad slots and release announcements are upstream's business and are not reproduced here. **The license and attribution rules are inherited unchanged.**
@@ -281,7 +327,7 @@ Full priorities, acceptance criteria and risks: **[docs/ROADMAP.md](docs/ROADMAP
 
 1. **Anchor self-healing + `purge_doctor`** — 86 literal anchors mean one host upgrade turns the whole set `pending`; report which anchor missed, why, and what the candidate anchors are.
 2. **Tests and CI** — today only `node --check`. Add `node:test` for the pure modules, plus CI running syntax, import and a `npm pack` whitelist snapshot.
-3. **A release path that belongs to this fork** — `.github/workflows/release.yml` is gated on the upstream repo name, so this fork never publishes; either change the gate or state "track only".
+3. **~~A release path for this fork~~ Decided: track upstream, publish nothing.** `release.yml` is deleted; `ci.yml` only verifies (syntax / import / pack whitelist / doc links) with `contents: read`.
 4. **Per-gate switch** — split `unlock.json` into region / drill / CORS / notice / own-servers, with an audit log.
 5. **Version semantics** — `package.json` still says 1.1.71 while the code has moved; adopt `+fork.N` or a real minor bump so "same version, different content" stops happening.
 

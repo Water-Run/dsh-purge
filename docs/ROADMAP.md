@@ -31,7 +31,9 @@
 
 **现状**：仓库没有任何测试目录，验证手段是 `node --check` 加手工自测（见 `docs/unlock.md` 的"自测"一节）。`bin/dsh-purge.js` 里 `--apply` 会直接写 `@deepseek-ai` 下的文件——这是最不该靠手点的路径。
 
-**做法**：
+**已完成一半**（2026-10）：`scripts/check-pack.mjs` 与 `.github/workflows/ci.yml` 已落地，CI 现在跑语法检查、入口 `import`、打包白名单、文档链接。顺带查出一个真问题——`lib/default-prompt-inject.md.bak` 一直被打进包里，已删除并在 `files` 里排除 `**/*.bak`。
+
+**剩余做法**：
 
 1. `node:test` + `node --test`，不引第三方框架。首批覆盖**纯函数**，这些已经完全不依赖宿主：
    - `net-scope.js`：`entryHost`（CIDR / 区间 / 通配 / `user@host` / `host:port` / URL / IPv6 带括号）、`normalizeAllowText`（混排、注释、密钥块丢弃）、`permittedHost` 与 `compileAllowMatchers` 的匹配一致性。
@@ -39,8 +41,8 @@
    - `zip-extract.js`：`../`、绝对路径、盘符路径、空段必须抛 `zip 路径不合法`。
    - `core.js` 的 `summarizeApplyReport` 与 `patchStatus` 的分类（给固定 fixture 目录）。
    - 正则类：`isCwdOnlyText`、`CWD_ONLY_SUFFIX` 的边界。
-2. 新增 `.github/workflows/ci.yml`：`node --check` 全量 → `import('./lib/index.js')` → `node --test` → `npm pack --dry-run` 的白名单断言。
-3. 白名单断言要写成测试：打包产物里**不得**出现 `lib/default-prompt-inject.md`、`default-prompt-inject.md`、`*.bak`、`docs/agents/`。
+2. 把 `node --test` 加成 CI 的一步（现在只有语法与白名单）。
+3. 打包白名单的断言从脚本升级成用例，覆盖 `lib/default-prompt-inject.md`、`*.bak`、`docs/agents/`（脚本已有，缺的是"故意放一个非法文件时必需失败"的负例）。
 4. 应用/还原的集成测试放在临时目录里跑：拷一份假 `@deepseek-ai` fixture → apply → 断言每处改动 → revert → 断言与原件逐字节相同。
 
 **验收**：`pnpm test` 本地全绿；CI 在 PR 上跑并卡住语法错误（上游 1.1.70 就因为主入口语法错误发出过 `failed to import`）；集成测试能在不碰真实安装的情况下证明 apply/revert 幂等。
@@ -49,16 +51,30 @@
 
 ---
 
-### P0-3 fork 自己的发版链，或明确"只跟不发布"
+### P0-3 ~~fork 自己的发版链~~ 已定：只跟上游、不发布
 
-**现状**：`.github/workflows/release.yml` 第一行就是 `if: github.repository == 'YuJunZhiXue/dsh-purge'`。本 fork（`Water-Run/dsh-purge`）上这个 job 永远 skip——**Push 到 master 什么都不会发生**，但 README 的安装命令又指向 `master.tar.gz`，两者不矛盾却容易误以为"发版了"。
+**决策（2026-10-22）**：本仓库不发任何包。已执行：
 
-**二选一，必须选**：
+- 删除 `.github/workflows/release.yml`（原文件 `if:` 锁在 `YuJunZhiXue/dsh-purge`，在本 fork 上永远 skip，属于"看起来有 CI 其实什么都不做"）。
+- 新增 `.github/workflows/ci.yml`：只校验，`permissions: contents: read`，不建 Release、不打 tag、不上传产物。
+- `scripts/check-pack.mjs`：本地与 CI 共用，守住 `files` 白名单。
+- README 中英双份写明：没有 Release / zip / tgz / npm 包，唯一来源是 `master`，想用就让 Agent 按安装契约自己装。
 
-- **A. 要发版**：把 `if:` 改成 `github.repository == 'Water-Run/dsh-purge'`，`release-notes.md` 首行版本校验保持不变，另加 `--prerelease` 判定（现有逻辑对 `*beta*|*alpha*|*rc*` 生效，`-fork.N` 需要单独加分支）。
-- **B. 不发布**：删掉这个 workflow（或保留但改名 `upstream-release.yml` 并注明"本 fork 不执行"），README 明确写"本 fork 不产出 Release，安装只认 `master` 归档"。
+**遗留**：`package.json` 的 `dsh.install` 字段仍指向 `master.tar.gz`。这是**安装源**不是发版产物，保留合理；若日后想彻底避免误解，可把 `preferred` 改成 `git` 或直接删掉 `dsh.install` 整段。
 
-**验收**：推到 master 后 GitHub Actions 页面有明确结果（要么出 Release，要么根本不存在这个 job），没有"看起来成功其实被 skip"的中间态。
+**验收**：推 master 后 Actions 只出现 CI 检查任务，Releases 页面长期为空——已完成。
+
+**工作量**：小（已完成）。
+
+---
+
+### P0-3b 上游同步与跟随节奏
+
+**现状**：既然不发版，"跟上上游"就是唯一的内容更新路径，但目前没有成文流程，fork 增量散在提交里。
+
+**做法**：`docs/fork-delta.md` 逐条记录 fork 提交对应上游哪一段；`scripts/sync-upstream.sh`：`git fetch upstream` → 列出 `upstream/master..master` 与 `master..upstream/master` 两侧 → 只在冲突处人工合并。确定不再跟随时，`git remote remove upstream`，让仓库真正只有一个来源。
+
+**验收**：一次上游小版本合并能在半小时内完成并留下 delta 记录。
 
 **工作量**：小。
 
@@ -231,17 +247,7 @@
 
 **工作量**：小偏中。
 
----
-
-### P2-5 上游同步流程
-
-**现状**：`upstream` remote 指向 `lhg-projects/dsh-purge`，与 `origin`（`Water-Run`）同名仓库。同步靠人工看 diff，fork 增量散在 7 个提交里。
-
-**做法**：`docs/fork-delta.md` 记录每个 fork 提交对应上游哪一段（现在 README 的"与上游的差异"表是雏形）；同步脚本 `scripts/sync-upstream.sh`：fetch → 列出 `upstream/master..master` 与 `master..upstream/master` 两侧 → 只在冲突处人工合并。保留 `upstream` remote 的价值就在这；如果确定不再跟上游，`git remote remove upstream` 让仓库真正只剩一个分支来源。
-
-**验收**：一次上游小版本合并能在半小时内完成并留下 delta 记录。
-
-**工作量**：小。
+> 上游同步流程原来是这里的 P2-5，因为"只跟上游、不发布"已定，同步从"可选打磨"变成唯一的内容更新路径，已上提为 **P0-3b**。
 
 ---
 
@@ -249,11 +255,12 @@
 
 | 项 | 原因 |
 | --- | --- |
+| GitHub Release / 预打包分发 | **已定**：只跟上游、不发布（P0-3）。`release.yml` 已删，CI 只校验 |
 | 遥测 / 使用统计 | 本机工具，没有需要外发的数据；也是许可与信任成本 |
 | 自动"修好"没命中的补丁（模糊匹配后直接写） | 锚点漂移时猜测等于乱改宿主文件。只报告候选，由人决定 |
 | 内置攻击载荷、扫描器 | 插件定位是宿主层可控性，不是打点套件；扫描器在 `skills/redteam/` 里是操作手册，工具由用户自己装 |
 | 把补丁逻辑改成"按宿主版本预置表" | 维护 N 份宿主副本的补丁表，成本比锚点多候选更高 |
-| 拆出独立 npm 包发布 | `package.json` 无 `publishConfig` 之外的发布路径，且许可禁止再分发 |
+| 发布到 npm | 无发布路径，许可也禁止再分发；`publishConfig` 已从 `package.json` 移除 |
 
 ---
 
@@ -264,7 +271,7 @@ flowchart LR
   A["P0-2 测试骨架 + fixture"] --> B["P0-1 doctor / 多锚点"]
   B --> C["P0-5 verify + sha256 状态"]
   C --> D["P0-4 版本语义 + dshTarget 分级"]
-  A --> E["P0-3 发版链二选一"]
+  A --> E["P0-3b 上游同步流程"]
   B --> F["P1-5 JSON 工具契约"]
   F --> G["P1-1 门禁粒度"]
   D --> H["P1-3 跨平台"]
@@ -272,4 +279,4 @@ flowchart LR
   E --> J["P2-1 文档一致性"]
 ```
 
-先做 P0-2，因为 P0-1 / P0-5 / P1-5 都需要 fixture 才能验证；发版链（P0-3）是独立决策，可以并行先定。"不做"表里的五项不必再讨论。
+先做 P0-2，因为 P0-1 / P0-5 / P1-5 都需要 fixture 才能验证。P0-3（发版链）已经拍板为「只跟上游、不发布」，不再占顺序位；剩下要补的是把它落实到流程里的 P0-3b。"不做"表里的六项不必再讨论。

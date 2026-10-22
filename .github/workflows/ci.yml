@@ -1,0 +1,65 @@
+name: CI
+
+# 本 fork 只跟上游、不发布：这里只做「还加载得起来 + 打包没泄漏」的校验，
+# 不创建 Release、不打 tag、不上传任何产物。
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: syntax + import + pack whitelist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Syntax check
+        run: |
+          set -eu
+          for f in lib/index.js lib/core.js lib/unlock.js lib/net-scope.js lib/reapply.js lib/uninstall.js bin/dsh-purge.js client.js; do
+            node --check "$f"
+          done
+          for f in scripts/*.mjs; do node --check "$f"; done
+
+      - name: Import entry
+        run: node --input-type=module -e "import('./lib/index.js').then(() => console.log('entry ok'))"
+
+      - name: Package whitelist
+        run: node scripts/check-pack.mjs
+
+      - name: Docs links
+        run: |
+          node -e '
+          const fs = require("fs"), path = require("path");
+          const files = ["README.md", "README.en.md", "README.zh-CN.md", "docs/ROADMAP.md"];
+          const slug = (t) => t.trim().toLowerCase().replace(/<[^>]+>/g, "").replace(/[`*_~]/g, "").replace(/[^\p{L}\p{N}\s-]/gu, "").trim().replace(/\s/g, "-");
+          const anchors = (md) => { const s = new Set(); for (const l of md.split(/\r?\n/)) { const m = /^(#{1,6})\s+(.*)$/.exec(l); if (m) s.add(slug(m[2])); } return s; };
+          let bad = 0;
+          for (const f of files) {
+            const md = fs.readFileSync(f, "utf8");
+            for (const m of md.matchAll(/\[[^\]]*\]\(([^)\s]+)\)/g)) {
+              const href = m[1];
+              if (/^(https?:|mailto:|dsh:)/.test(href)) continue;
+              const [rel, hash] = href.split("#");
+              let target = f;
+              if (rel) {
+                target = path.posix.normalize(path.posix.join(path.posix.dirname(f), decodeURIComponent(rel)));
+                if (!fs.existsSync(target)) { console.log("MISSING FILE   " + f + " -> " + href); bad++; continue; }
+                if (!target.endsWith(".md")) continue;
+              }
+              if (hash && !anchors(fs.readFileSync(target, "utf8")).has(hash.toLowerCase())) { console.log("MISSING ANCHOR " + f + " -> " + href); bad++; }
+            }
+          }
+          if (bad) process.exit(1);
+          console.log("docs links ok");
+          '

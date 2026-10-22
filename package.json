@@ -21,6 +21,8 @@
   "files": [
     "lib",
     "!lib/default-prompt-inject.md",
+    "!lib/*.bak",
+    "!**/*.bak",
     "bin",
     "docs",
     "presets",
@@ -83,9 +85,6 @@
       "zip": "https://github.com/Water-Run/dsh-purge/archive/refs/heads/master.zip",
       "git": "https://github.com/Water-Run/dsh-purge.git"
     }
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1"

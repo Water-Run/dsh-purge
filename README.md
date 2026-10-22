@@ -20,7 +20,9 @@
 
 > **这是什么。** 一个装在你本机官方 [DeepSeek Harness](https://www.deepseek.com/harness/) 上的插件。它把宿主在运行时加在你和模型之间的东西——系统提示词、审批门、沙箱策略、工具回执、会话改写的措辞——逐条列出来，允许你在**自己的安装**里逐条改掉、跳过或还原。共 86 个补丁，全部可逆。
 >
-> **这是什么仓库。** `Water-Run/dsh-purge`，[YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge) 的个人派生副本，单分支 `master`，当前内容 = 上游 1.1.71 + fork 增量（限制总闸、名单语法、0.2.1 适配），未单独发版。见[与上游的差异](#与上游的差异)。**许可与署名沿用上游，一字未松**，见[许可与署名](#许可与署名)。
+> **这是什么仓库。** `Water-Run/dsh-purge`，[YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge) 的个人派生副本，单分支 `master`，当前内容 = 上游 1.1.71 + fork 增量（限制总闸、名单语法、0.2.1 适配）。见[与上游的差异](#与上游的差异)。**许可与署名沿用上游，一字未松**，见[许可与署名](#许可与署名)。
+>
+> **这个仓库不放包。** 没有 Release、没有 zip、没有 tgz、没有 npm 包，也没有安装求助渠道。想用就把它交给你的 Agent，让它照[安装契约](#可粘贴的安装契约)装到你本机——详见[这里没有安装包](#这里没有安装包)。
 
 ---
 
@@ -28,6 +30,7 @@
 
 - [它到底改什么](#它到底改什么)
 - [兼容矩阵](#兼容矩阵)
+- [这里没有安装包](#这里没有安装包)
 - [安装](#安装)
   - [两步装完](#两步装完)
   - [三步生效](#三步生效)
@@ -45,6 +48,7 @@
 - [工作原理](#工作原理)
 - [运行时文件](#运行时文件)
 - [排错](#排错)
+- [跟上游，不发版](#跟上游不发版)
 - [与上游的差异](#与上游的差异)
 - [路线图](#路线图)
 - [许可与署名](#许可与署名)
@@ -85,7 +89,32 @@ Harness 不是把问题直接交给模型。它会在运行时按层改东西。
 
 ---
 
+## 这里没有安装包
+
+本仓库**只跟上游、不发布**，所以这里没有：
+
+- ❌ GitHub Releases、zip、tgz——`.github/workflows/release.yml` 已删除，推代码不会再产出任何包
+- ❌ npm 包——`pnpm add dsh-purge` 必然 404，别试
+- ❌ 预打包产物、网盘链接、频道分包
+- ❌ 安装求助、定制、商务、issue 里要包
+
+唯一的来源是 `master` 分支本身。想要就**让你的 Agent 进来装**，不要等包：
+
+```text
+这个仓库我要在本机用。读 README.md 里的 AGENT-INSTALL 契约，把 dsh-purge 装进本机
+DeepSeek Harness 的 web 和 desktop 两个 profile。只安装，不要应用补丁，不要重启。
+装完按契约里的回报格式告诉我结果。
+```
+
+这段对 MiniMax Code、Claude Code、Codex、Cursor 都成立，粘贴位置不同而已，细节见[给 Agent 的安装手册](#给-agent-的安装手册)。装完那一次「应用」由你自己点——这是唯一不能外包的一步。
+
+自己动手也行，命令在[安装](#安装)一节。想找「别人打好的包」，去上游问，别在这个仓库等。
+
+---
+
 ## 安装
+
+没有 Release 可下。下面两条 `dsh plugin add` 是唯一入口：`master` 归档，或者一个本仓库目录。
 
 ### 两步装完
 
@@ -256,6 +285,9 @@ Agent 装这个插件最常见的三种翻车方式，都不是命令写错：
 <!-- dsh-purge:AGENT-INSTALL:START -->
 
 任务：把 dsh-purge 插件装进本机 DeepSeek Harness 的指定 profile。只安装，不应用。
+
+前提：本仓库不发任何包。没有 Release、没有 npm、没有网盘镜像。
+      唯一来源就是下面的 <SRC>。找不到别处 = 正常，不要去搜。
 
 参数：
   REPO_DIR    = 本仓库根目录；若当前工作目录就是本仓库，命令里的 <SRC> 用 .
@@ -525,6 +557,18 @@ flowchart TD
 
 ---
 
+## 跟上游，不发版
+
+这个仓库的定位是**跟上游 + 本机自用**，不是分发渠道。三条推论：
+
+1. **没有版本号可等。** 内容以 `master` 的最新提交为准；`package.json` 里的 `1.1.71` 是上游那个包的版本，不代表这里发过 1.1.71。
+2. **更新 = 重新拉 `master`。** 装过插件的：再跑一次同一条 `dsh plugin --profile <名> add <master 归档>`，然后退出宿主、重开、重新点「应用」。直接克隆过的：`git pull` 之后同样重启 + 重新应用。宿主升级把补丁打成 `pending` 时，等这边跟上上游，或自己 `--revert` 回原版。
+3. **不承诺节奏。** 上游停更、闭源、改许可，这里只做跟随，不发公告、不建群、不接受预定。
+
+CI 只做校验（[.github/workflows/ci.yml](.github/workflows/ci.yml)）：语法检查、入口能否 `import`、打包白名单、文档链接。权限写死 `contents: read`——**它不建 Release、不打 tag、不上传任何产物**，想发也发不出去。
+
+---
+
 ## 与上游的差异
 
 `master` 相对上游 [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge) 的增量：
@@ -536,6 +580,8 @@ flowchart TD
 | **0.2.1 适配** | #57 兼容 `instructionRole` 改名；`cwd` 改模板变量 `{{cwd}}`；五个兼容补丁落到 profile 副本（[docs/compat-0.2.1.md](docs/compat-0.2.1.md)） |
 | **面板跨域** | 解锁模式下 `/dsh-purge/*` 换 IP、反代、跨端口可用 |
 | **单分支** | 只有 `master`；`feat/unlock-gates` 已并入并删除 |
+| **不发版** | 删除 `.github/workflows/release.yml`；新增 `ci.yml` 只做校验，权限 `contents: read`，不产出任何包 |
+| **打包干净** | 删掉残留的 `lib/default-prompt-inject.md.bak`；`files` 白名单排除 `**/*.bak`，由 `scripts/check-pack.mjs` 守住 |
 | **文档** | README 重写；路线图独立成 [docs/ROADMAP.md](docs/ROADMAP.md) |
 
 上游的征集、广告位、发版公告属于上游作者的业务安排，本仓库不复制这些内容；**许可与署名要求照旧继承**，见下一节。
@@ -548,7 +594,7 @@ flowchart TD
 
 1. **补丁锚点自愈 + `purge_doctor`**：86 个补丁全靠字面匹配，宿主一升级就集体 pending。给出「哪一条挂了、为什么、候选锚点是什么」。
 2. **测试与 CI**：现在只有 `node --check`。给纯函数补 `node:test`，CI 跑语法 + import + pack 白名单快照。
-3. **fork 自己的发版链**：`.github/workflows/release.yml` 的 `if:` 锁在上游仓库，本 fork 永远不发版；要么改门，要么明确「本 fork 只跟不发布」。
+3. **~~fork 自己的发版链~~ 已定：只跟上游、不发布。** `release.yml` 已删除，`ci.yml` 只做校验（语法 / import / 打包白名单 / 文档链接），权限 `contents: read`。
 4. **门禁粒度**：`unlock.json` 从总闸拆成 per-gate（区域 / 演练台 / 跨域 / 声明窗 / 名单），并记审计日志。
 5. **版本语义**：`package.json` 停在 1.1.71，代码已超出。定 `+fork.N` 或独立 minor，别让「同版本不同内容」。
 
