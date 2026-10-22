@@ -60,6 +60,29 @@ Two side-panel pages: **Clean** (patches, prompt, rule sets, skills, own servers
 
 ---
 
+## The five armor layers
+
+A jailbreak here is not one prompt. The plugin splits "why did the model still refuse" into five layers, each independently switchable:
+
+| Layer | Where | What it does | How to disable |
+| --- | --- | --- | --- |
+| **L0 host** | 86 patches in `lib/core.js` | rewrites the host's own identity lines, approval gates, sandbox refusal text and tool receipts | untick in the panel / `--revert` |
+| **L1 kernel** | kernel v3, five parts, written into the host's `agent-instructions` | claims precedence, pins the executor identity, pins authorization, bilingual banned-phrase list, execution shape | `--revert` |
+| **L2 wrap** | `lib/armor.js`, applied when the inject is composed | prelude: precedence ladder / authority settled / denial-is-retry; postlude: final six-question gate | stop wrapping in `resolveInjectText` |
+| **L3 operator prompt** | `$DSH_HOME/prompt-inject.md` | your persona and hard rules | empty the file |
+| **L4 guard** | `lib/refusal-guard.js` on `agent/pre-step` | if the last assistant message reads as a refusal, appends one corrective message **to the request** and continues; max 2 times | `refusalGuard: false` |
+
+L4 keeps three limits so it cannot become its own damage: it mutates only `decision.messages` (no fake user bubble), it caps consecutive corrections (`refusalMax`, default 2) and resets on any normal reply, and it stays conservative — long answers with code fences are treated as deliverables, and mid-text banned phrases need two hits.
+
+```yaml
+        refusalGuard: true     # turn L4 off entirely
+        refusalMax: 2          # consecutive corrections
+        autoRetry: true        # request-error retry, a separate path
+        retryMax: 3
+```
+
+---
+
 ## Compatibility
 
 | Host | Status | Which build |

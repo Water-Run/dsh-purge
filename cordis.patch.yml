@@ -48,6 +48,8 @@
         postPrompt: ""
         postPromptOrder: 5100
         autoRetry: true
+        refusalGuard: true
+        refusalMax: 2
         retryMax: 3
         autoContinue: false
         continueMax: 3
