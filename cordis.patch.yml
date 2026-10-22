@@ -39,7 +39,7 @@
       inject: [systemPrompt, tools]
       config:
         enabled: true
-        autoApplyOnStart: false
+        autoApplyOnStart: true
         autoUpdateOnStart: false
         autoRevertOnMissing: false
         injectOnce: false
