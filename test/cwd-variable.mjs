@@ -32,7 +32,7 @@ function findHostRenderer() {
   const candidates = [
     override,
     path.join(pluginDir, "node_modules", "@deepseek-ai", "dsh-system-prompt", "lib", "index.js"),
-    "C:/Users/jeff/AppData/Local/Programs/DeepSeek Harness/resources/app/dsh/node_modules/@deepseek-ai/dsh-system-prompt/lib/index.js",
+    path.join(process.env.DSH_HOME || "", "profiles", "node_modules", "@deepseek-ai", "dsh-system-prompt", "lib", "index.js"),
     path.join(process.env.APPDATA || "", "npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-system-prompt/lib/index.js"),
     path.join(process.env.LOCALAPPDATA || "", "Programs/DeepSeek Harness/resources/app/dsh/node_modules/@deepseek-ai/dsh-system-prompt/lib/index.js"),
   ].filter(Boolean);
@@ -128,15 +128,19 @@ console.log("\n== 3. packaged suffix renders clean ==");
   ]);
   const suffix = sections.find((s) => s.name === "deployment:persona-suffix");
   check("overlay replaced the variable-bearing suffix", !String(suffix.text || "").includes("{{cwd}}"), JSON.stringify(suffix?.text));
-  let rendered = null;
-  let threw = null;
-  try {
-    rendered = renderPrompt(assembly(sections, { provider: "deepseek", model: "deepseek-v4" }));
-  } catch (error) {
-    threw = error;
+  if (hasRenderer) {
+    let rendered = null;
+    let threw = null;
+    try {
+      rendered = renderPrompt(assembly(sections, { provider: "deepseek", model: "deepseek-v4" }));
+    } catch (error) {
+      threw = error;
+    }
+    check("renders without throwing", threw === null, String(threw?.message || ""));
+    check("no raw {{cwd}} in output", !String(rendered || "").includes("{{cwd}}"));
+  } else {
+    console.log("  skip  render checks (no host renderer)");
   }
-  check("renders without throwing", threw === null, String(threw?.message || ""));
-  check("no raw {{cwd}} in output", !String(rendered || "").includes("{{cwd}}"));
 }
 
 console.log("\n== 4. overlay also strips the legacy working-directory line ==");
@@ -147,13 +151,17 @@ console.log("\n== 4. overlay also strips the legacy working-directory line ==");
   ]);
   const joined = sections.map((s) => String(s.text || "")).join("\n");
   check("no {{cwd}} survives in any section", !joined.includes("{{cwd}}"), joined.slice(0, 120));
-  let threw = null;
-  try {
-    renderPrompt(assembly(sections, { provider: "p", model: "m" }));
-  } catch (error) {
-    threw = error;
+  if (hasRenderer) {
+    let threw = null;
+    try {
+      renderPrompt(assembly(sections, { provider: "p", model: "m" }));
+    } catch (error) {
+      threw = error;
+    }
+    check("whole assembly renders", threw === null, String(threw?.message || ""));
+  } else {
+    console.log("  skip  whole assembly renders (no host renderer)");
   }
-  check("whole assembly renders", threw === null, String(threw?.message || ""));
 }
 
 console.log("\n== 5. cwd-variable registers the missing variable ==");
