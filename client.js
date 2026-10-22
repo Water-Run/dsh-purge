@@ -175,10 +175,10 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"purge.title": "补丁",
 			"override.title": "提示词",
 			"own.title": "自己的服务器",
-			"own.hint": "每行一个 IP 或完整主机名。可以写成 账号@主机，账号只用来认出这种写法。主机名会连同它当时解析出的地址一起放行。不要写密钥、密码、网段。",
+			"own.hint": "每行一条：单个 IP、网段（10.0.0.0/8）、区间（10.0.0.1-10.0.0.254）、通配（*.corp.example）或完整主机名，也可以写成 账号@主机。网段和通配现在都收，只丢密钥块。",
 			"own.save": "保存名单",
 			"saved.own": "已保存自己的服务器",
-			"saved.own.dropped": "已保存。有 {n} 行不是单个 IP 或主机名，已丢掉",
+			"saved.own.dropped": "已保存。有 {n} 项写法无效，已丢掉",
 			"metric.purged": "已写入",
 			"metric.purged.skip": "已写入。跳过 {n} 项，本机没有这些文件",
 			"metric.pendingShort": "待处理 {n}",
@@ -519,10 +519,10 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"purge.title": "Patches",
 			"override.title": "Prompt",
 			"own.title": "Own servers",
-			"own.hint": "One IP or exact hostname per line. account@host is accepted; the account only identifies that host. A hostname also allows the addresses it resolves to. Do not enter a key, a password, or a range.",
+			"own.hint": "One entry per line: a single IP, a CIDR range (10.0.0.0/8), an interval (10.0.0.1-10.0.0.254), a wildcard (*.corp.example), or an exact hostname; account@host is fine too. Ranges and wildcards are accepted now; only key material is dropped.",
 			"own.save": "Save list",
 			"saved.own": "Own servers saved",
-			"saved.own.dropped": "Saved. {n} lines were not a single IP or hostname and were dropped",
+			"saved.own.dropped": "Saved. {n} entries were not valid host patterns and were dropped",
 			"metric.purged": "Written",
 			"metric.purged.skip": "Written. Skipped {n}; those files are not on this install",
 			"metric.pendingShort": "Pending {n}",
@@ -7720,6 +7720,9 @@ body[data-ds-dark-theme] .dshp-rewind-item span{color:var(--dsw-alias-label-tert
 
 		const AUTH_KEY = "dsh-purge-drill-auth";
 		const WELCOME_KEY = "dsh-purge-user-notice-v1";
+		/* [dsh-purge] 本机自用：演练台授权窗（倒计时 + 滚到底 + 三个勾）和首次欢迎声明窗都不再拦人。
+		   改成 false 就回到官方那两道窗；同时清掉 localStorage 里的 dsh-purge-drill-auth 才会重新弹。 */
+		const DSH_PURGE_UNLOCKED = true;
 		let drillGrantGen = 0;
 		let drillGrantPosting = 0;
 		let drillGrantState = { ready: false, granted: false };
@@ -7734,6 +7737,7 @@ body[data-ds-dark-theme] .dshp-rewind-item span{color:var(--dsw-alias-label-tert
 		}
 
 		function readDrillAuth() {
+			if (DSH_PURGE_UNLOCKED) return true;
 			if (drillGrantState.ready) return drillGrantState.granted;
 			try { return window.localStorage.getItem(AUTH_KEY) === "1"; } catch { return false; }
 		}
@@ -7773,6 +7777,12 @@ body[data-ds-dark-theme] .dshp-rewind-item span{color:var(--dsw-alias-label-tert
 					if (r.granted) {
 						setDrillAuthLocal(true);
 						if (dockBus.authOpen) setDock({ authOpen: false });
+						return;
+					}
+					if (DSH_PURGE_UNLOCKED) {
+						/* 解锁模式：服务端还没授权就直接补一份，不弹授权窗 */
+						if (dockBus.authOpen) setDock({ authOpen: false });
+						writeDrillAuth(true);
 						return;
 					}
 					if (drillGrantPosting > 0) return;
@@ -7876,7 +7886,7 @@ body[data-ds-dark-theme] .dshp-rewind-item span{color:var(--dsw-alias-label-tert
 
 		function WelcomeNotice() {
 			const t = useT();
-			const [open, setOpen] = useState(() => !readWelcomeAck());
+			const [open, setOpen] = useState(() => !(DSH_PURGE_UNLOCKED || readWelcomeAck()));
 			const [checked, setChecked] = useState(false);
 			if (!open) return null;
 			const repo = t("welcome.repo");
